@@ -91,6 +91,7 @@ const OWNERSHIP_LENGTH_OPTIONS = [
   { id: "3-to-5", label: "3 to 5 years" },
   { id: "5-to-10", label: "5 to 10 years" },
   { id: "10-plus", label: "10+ years" },
+  { id: "inherited", label: "I recently inherited the home" },
 ]
 
 // ─── Lead scoring (browser-side) ───────────────────────────────────────
@@ -402,6 +403,14 @@ export function SurveyCard({ phoneDisplay = "(800) 000-0000", phoneHref = "80000
       setTimeout(() => { setDisqualifyReason("notOwner"); setIsDisqualified(true) }, 300)
       return
     }
+    if (field === "condition" && value === "excellent") {
+      setTimeout(() => { setDisqualifyReason("excellentCondition"); setIsDisqualified(true) }, 300)
+      return
+    }
+    if (field === "ownershipLength" && ["less-than-3", "3-to-5"].includes(value)) {
+      setTimeout(() => { setDisqualifyReason("noEquity"); setIsDisqualified(true) }, 300)
+      return
+    }
     // v2 motivation list (MOTIVATION_V2): "no reason / seeing what my house is
     // worth" hard-disqualifies — block screen, lead never submitted. The id only
     // exists in REASON_OPTIONS_V2, so this branch is inert for the legacy list.
@@ -467,6 +476,16 @@ export function SurveyCard({ phoneDisplay = "(800) 000-0000", phoneHref = "80000
         message: "Unfortunately, we don't currently buy properties in that area.",
         detail: "We only serve select markets at this time. If you believe your property is within our coverage area, please try a different address or give us a call.",
       },
+      excellentCondition: {
+        title: "We Can't Make an Offer Right Now",
+        message: "We focus on houses that need repairs or updates, so we're not the best fit for a move-in ready home.",
+        detail: "A home in excellent condition will usually sell for more on the open market. If you feel like we made a mistake, text us at this number.",
+      },
+      noEquity: {
+        title: "We're Unable to Make an Offer",
+        message: "Unfortunately, based on how long you've owned the property, there typically isn't enough equity for us to make a fair cash offer.",
+        detail: "If you feel like we made a mistake, text us at this number.",
+      },
       noReason: {
         title: "Just Browsing?",
         message: "It sounds like you're gathering information right now rather than looking to sell.",
@@ -474,6 +493,11 @@ export function SurveyCard({ phoneDisplay = "(800) 000-0000", phoneHref = "80000
       },
     }
     const msg = disqualifyMessages[disqualifyReason] || disqualifyMessages.notOwner
+    const textMessages: Record<string, string> = {
+      excellentCondition: "Your form said I don't qualify for an offer because my home is in excellent condition, but I'm still interested in an offer.",
+      noEquity: "Your form said I don't qualify for an offer because of how long I've owned my home, but I'm still interested in an offer.",
+    }
+    const textBody = textMessages[disqualifyReason]
 
     return (
       <div className="w-full max-w-2xl rounded-2xl border border-gray-200 bg-white p-6 shadow-lg">
@@ -487,10 +511,10 @@ export function SurveyCard({ phoneDisplay = "(800) 000-0000", phoneHref = "80000
             <p className="mt-4 text-sm text-gray-500">{msg.detail}</p>
           </div>
           <a
-            href={`tel:${phoneHref}`}
+            href={textBody ? `sms:${phoneHref.replace(/\D/g, "")}?&body=${encodeURIComponent(textBody)}` : `tel:${phoneHref}`}
             className="mt-2 inline-flex items-center gap-2 rounded-xl bg-[var(--accent)] px-6 py-3 text-white hover:opacity-90 transition-opacity"
           >
-            Call Us: {phoneDisplay}
+            {textBody ? "Text Us" : "Call Us"}: {phoneDisplay}
           </a>
         </div>
       </div>
@@ -605,7 +629,7 @@ export function SurveyCard({ phoneDisplay = "(800) 000-0000", phoneHref = "80000
           <div className="flex flex-col gap-4">
             <div>
               <h2 className="text-2xl font-semibold text-gray-900">What condition is the property in?</h2>
-              <p className="mt-1 text-sm text-gray-500">Be honest - we buy houses in any condition.</p>
+              <p className="mt-1 text-sm text-gray-500">Be honest. It helps us make you a real offer.</p>
             </div>
             <div className="flex flex-col gap-2">
               {CONDITION_OPTIONS.map((option) => renderOptionButton(option, surveyData.condition, "condition"))}
